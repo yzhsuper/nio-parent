@@ -19,15 +19,14 @@ import org.nio.use.api.HelloService;
 import org.nio.use.api.HelloServiceImpl;
 import org.nio.use.entity.RequestObject;
 
-
 public class NioServer {
 
 	private final static Logger logger = Logger.getLogger(NioServer.class.getName());
-	
+
 	public static void main(String[] args) {
 		Selector selector = null;
 		ServerSocketChannel serverSocketChannel = null;
-		
+
 		try {
 			// Selector for incoming time requests
 			selector = Selector.open();
@@ -35,29 +34,40 @@ public class NioServer {
 			// Create a new server socket and set to non blocking mode
 			serverSocketChannel = ServerSocketChannel.open();
 			serverSocketChannel.configureBlocking(false);
-			
+
 			// Bind the server socket to the local host and port
 			serverSocketChannel.socket().setReuseAddress(true);
 			serverSocketChannel.socket().bind(new InetSocketAddress(10000));
-			
+
 			// Register accepts on the server socket with the selector. This
 			// step tells the selector that the socket wants to be put on the
 			// ready list when accept operations occur, so allowing multiplexed
 			// non-blocking I/O to take place.
+
 			serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
-	
+
 			// Here's where everything happens. The select method will
 			// return when any operations registered above have occurred, the
 			// thread has been interrupted, etc.
 			while (selector.select() > 0) {
 				// Someone is ready for I/O, get the ready keys
 				Iterator<SelectionKey> it = selector.selectedKeys().iterator();
-	
+
 				// Walk through the ready keys collection and process date requests.
 				while (it.hasNext()) {
 					SelectionKey readyKey = it.next();
+					if (readyKey.isAcceptable()) {
+						System.out.println("isAcceptable");
+					} else if (readyKey.isConnectable()) {
+						System.out.println("isConnectable");
+					} else if (readyKey.isReadable()) {
+						System.out.println("isReadable");
+					} else if (readyKey.isWritable()) {
+						System.out.println("isWritable");
+					}
+
 					it.remove();
-					
+
 					// The key indexes into the selector so you
 					// can retrieve the socket that's ready for I/O
 					execute((ServerSocketChannel) readyKey.channel());
@@ -70,10 +80,12 @@ public class NioServer {
 		} finally {
 			try {
 				selector.close();
-			} catch(Exception ex) {}
+			} catch (Exception ex) {
+			}
 			try {
 				serverSocketChannel.close();
-			} catch(Exception ex) {}
+			} catch (Exception ex) {
+			}
 		}
 	}
 
@@ -83,29 +95,30 @@ public class NioServer {
 			socketChannel = serverSocketChannel.accept();
 			RequestObject myRequestObject = receiveData(socketChannel);
 			logger.log(Level.INFO, myRequestObject.toString());
-			
+
 			HelloService service = new HelloServiceImpl();
-//			ResponseObject myResponseObject = new ResponseObject(
-//					"response for " + myRequestObject.getName(), 
-//					"response for " + myRequestObject.getValue());
-//			sendData(socketChannel, service);
+			// ResponseObject myResponseObject = new ResponseObject(
+			// "response for " + myRequestObject.getName(),
+			// "response for " + myRequestObject.getValue());
+			// sendData(socketChannel, service);
 			byte[] bytes = SerializationUtils.serialize((Serializable) service);
 			ByteBuffer buffer = ByteBuffer.wrap(bytes);
 			socketChannel.write(buffer);
-			
-//			logger.log(Level.INFO, myResponseObject.toString());
+
+			// logger.log(Level.INFO, myResponseObject.toString());
 		} finally {
 			try {
 				socketChannel.close();
-			} catch(Exception ex) {}
+			} catch (Exception ex) {
+			}
 		}
 	}
-	
+
 	private static RequestObject receiveData(SocketChannel socketChannel) throws IOException {
 		RequestObject myRequestObject = null;
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		ByteBuffer buffer = ByteBuffer.allocate(1024);
-		
+
 		try {
 			byte[] bytes;
 			int size = 0;
@@ -118,18 +131,20 @@ public class NioServer {
 			}
 			bytes = baos.toByteArray();
 			Object obj = SerializationUtils.deserialize(bytes);
-			myRequestObject = (RequestObject)obj;
+			myRequestObject = (RequestObject) obj;
 		} finally {
 			try {
 				baos.close();
-			} catch(Exception ex) {}
+			} catch (Exception ex) {
+			}
 		}
 		return myRequestObject;
 	}
 
-//	private static void sendData(SocketChannel socketChannel, Object<T extends Serializable> object) throws IOException {
-//		byte[] bytes = SerializationUtils.serialize(object);
-//		ByteBuffer buffer = ByteBuffer.wrap(bytes);
-//		socketChannel.write(buffer);
-//	}
+	// private static void sendData(SocketChannel socketChannel, Object<T extends
+	// Serializable> object) throws IOException {
+	// byte[] bytes = SerializationUtils.serialize(object);
+	// ByteBuffer buffer = ByteBuffer.wrap(bytes);
+	// socketChannel.write(buffer);
+	// }
 }
