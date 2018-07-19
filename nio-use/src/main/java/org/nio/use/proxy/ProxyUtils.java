@@ -10,7 +10,6 @@ import java.nio.channels.SocketChannel;
 import org.apache.commons.lang3.SerializationUtils;
 import org.nio.use.api.HelloService;
 import org.nio.use.entity.RequestObject;
-import org.nio.use.entity.ResponseObject;
 
 /**
  * Hello world!
@@ -18,9 +17,9 @@ import org.nio.use.entity.ResponseObject;
  */
 public class ProxyUtils {
 	public static HelloService getBean() {
-		SocketChannel socketChannel = null;
-		try {
-			socketChannel = SocketChannel.open();
+		// SocketChannel socketChannel = null;
+		try (SocketChannel socketChannel = SocketChannel.open();) {
+
 			SocketAddress socketAddress = new InetSocketAddress("localhost", 10000);
 			socketChannel.connect(socketAddress);
 
@@ -30,15 +29,15 @@ public class ProxyUtils {
 			HelloService service = receiveData(socketChannel);
 			return service;
 		} catch (Exception ex) {
-		} finally {
-			try {
-				socketChannel.close();
-			} catch (Exception ex) {
-			}
+			// } finally {
+			// try {
+			// socketChannel.close();
+			// } catch (Exception ex) {
+			// }
 		}
 		return null;
 	}
-	
+
 	public static void sendData(SocketChannel socketChannel, RequestObject RequestObject) throws IOException {
 		byte[] bytes = SerializationUtils.serialize(RequestObject);
 		ByteBuffer buffer = ByteBuffer.wrap(bytes);
@@ -48,9 +47,7 @@ public class ProxyUtils {
 
 	public static HelloService receiveData(SocketChannel socketChannel) throws IOException {
 		HelloService helloService = null;
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		
-		try {
+		try (ByteArrayOutputStream baos = new ByteArrayOutputStream();) {
 			ByteBuffer buffer = ByteBuffer.allocateDirect(1024);
 			byte[] bytes;
 			int count = 0;
@@ -65,10 +62,13 @@ public class ProxyUtils {
 			Object obj = SerializationUtils.deserialize(bytes);
 			helloService = (HelloService) obj;
 			socketChannel.socket().shutdownInput();
-		} finally {
-			try {
-				baos.close();
-			} catch(Exception ex) {}
+			// } finally {
+			// try {
+			// baos.close();
+			// } catch (Exception ex) {
+			// }
+		} catch (Exception ex) {
+
 		}
 		return helloService;
 	}
